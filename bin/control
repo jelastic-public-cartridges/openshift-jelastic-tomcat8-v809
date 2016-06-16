@@ -1,9 +1,4 @@
 #!/bin/sh
-#  $Id$
-#  $Revision$
-#  $Date$
-#  $Author$
-#  $HeadURL$
 #
 # Linux init script for the Apache Tomcat servlet container.
 #
@@ -48,10 +43,6 @@ fi
 SED=$(which sed)
 GREP=$(which grep)
 
-if [ -x /opt/repo/versions/${Version}/bin/variablesparser.sh ]; then
-    . /opt/repo/versions/${Version}/bin/variablesparser.sh
-fi
-
 APP_ENV="/opt/repo/versions/${Version}/conf/tomcat-env.sh"
 
 # Source the app config file, if it exists.
@@ -91,78 +82,7 @@ let RETVAL=0
 JVM_PID="0"
 JVM_RUNNING="false"
 
-
-#################### Hivext mod #####################
-
-TOMCAT_HOME="/opt/repo/versions/${Version}"
-TOMCAT_MEMORY_CONF='conf/tomcat-env.sh'
-
-clean_env(){
-        $SED -i -e "/^JAVA_OPTS/s/-XX:-UseAdaptiveSizePolicy/ /g" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-        $SED -i -e "/^JAVA_OPTS/s/-XX:[-+]UseCompressedOops/ /g" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-        $SED -i -e "/^JAVA_OPTS/s/-Xmaxf[[:digit:]\.]\{1,\}/ /g" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-        $SED -i -e "/^JAVA_OPTS/s/-Xminf[[:digit:]\.]\{1,\}/ /g" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-        $SED -i -e "/^JAVA_OPTS/s/-XX:MaxPermSize\=256m/ /g" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-        $SED -i -e "/^JAVA_OPTS/s/-XX:[-+]Use[[:alnum:]]\{1,\}GC/ /g" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-}
-
-
-generateOptimalSettings(){
-        clean_env;
-        GC_LIMMIT=8000;
-        [ -z "$XMS" ] && { XMS=32M; }
-        [ -z "$XMN" ] && { XMN=30M; }
-        local memory_total=`free -m | grep Mem | awk '{print $2}'`;
-        [ -z "$XMX" ] && {
-            let XMX=memory_total-35;
-            XMX="${XMX}M";
-        }
-        [ -z "$GC" ] && {
-           [ "$memory_total" -ge "$GC_LIMMIT" ] && GC="-XX:+UseG1GC" || GC="-XX:+UseParNewGC";
-        }
-
-        if ! `echo $confresult | grep -q "\-Xminf[[:digit:]\.]"`
-        then
-              confresult=$confresult" -Xminf0.1"
-        fi
-        if ! `echo $confresult | grep -q "\-Xmaxf[[:digit:]\.]"`
-        then
-              confresult=$confresult" -Xmaxf0.3"
-        fi
-        if ! `echo $confresult | grep -q "\-XX:MaxPermSize"`
-        then
-              confresult=$confresult" -XX:MaxPermSize=256m "
-        fi
-        if ! `echo $confresult | grep -q "UseCompressedOops"`
-        then
-              confresult=$confresult" -XX:+UseCompressedOops"
-        fi
-         confresult=$confresult" $GC"
-
-}
-
-updateMemoryConfig(){
-        count=`$GREP -e "^JAVA_OPTS" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF} |$GREP -c -e $2`
-        if [ "$count" -eq 1 ]
-        then
-                $SED -i -e "/^JAVA_OPTS/s/$2/$1 /" -e '/^JAVA_OPTS/s/ \{1,\}/ /g' ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-        else
-                $SED -i "/^JAVA_OPTS/s/\"/\"$1\ /" ${TOMCAT_HOME}/${TOMCAT_MEMORY_CONF}
-        fi
-}
-
-setOpts(){
-        generateOptimalSettings;
-        [ ! -z "$XMX" ] && updateMemoryConfig "-Xmx$XMX" "-Xmx[[:digit:]]\{1,\}[MGkKmg[:space:]]"
-        [ ! -z "$XMS" ] && updateMemoryConfig "-Xms$XMS" "-Xms[[:digit:]]\{1,\}[MGkKmg[:space:]]"
-        [ ! -z "$XMN" ] && updateMemoryConfig "-Xmn$XMN" "-Xmn[[:digit:]]\{1,\}[MGkKmg[:space:]]"
-
-}
-
-
-
 start() {
-    setOpts;
     [ -r "$APP_ENV" ] && . "${APP_ENV}";
     if [[ "$HA" == "on"  ]]; then
         while :
