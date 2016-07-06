@@ -2,11 +2,11 @@ Name: tomcat
 Cartridge-Short-Name: TOMCAT8
 Display-Name: TOMCAT8
 Description: "Jelastic Tomcat8"
-Version: '8.0.30'
+Version: '8.5.3'
 License: 'Apache licence'
 License-Url: 
 Vendor: Eclipse
-Cartridge-Version: 8.0.30
+Cartridge-Version: 8.5.3
 Cartridge-Vendor: Jelastic
 Categories:
   - service
