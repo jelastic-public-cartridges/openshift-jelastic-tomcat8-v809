@@ -1,6 +1,6 @@
 #!/bin/bash
 . /etc/jelastic/environment
-CONFFILE='/opt/repo/versions/${Version}/conf/variables.conf'
+CONFFILE="/opt/repo/versions/${Version}/conf/variables.conf"
 JELASTIC_GC_AGENT="jelastic-gc-agent.jar"
 
 SED=`which sed`
