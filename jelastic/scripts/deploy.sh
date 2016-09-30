@@ -43,8 +43,8 @@ function _applyPreUndeploy(){
 }
 
 function _applyPostUndeploy(){
+	[ -d "${APPS_DIR}" ] && rm -rf ${APPS_DIR}/${context}
 	rm -rf ${WEBROOT}/${context}
-	rm -rf ${APPS_DIR}/${context}
 }
 
 function _applyPreRename(){
