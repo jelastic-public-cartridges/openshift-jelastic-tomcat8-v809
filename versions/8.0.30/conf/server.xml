@@ -1,5 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
+
+<!DOCTYPE server-xml [
+  <!ENTITY jelastic-ssl SYSTEM "jelastic-ssl.xml">
+]>
+
 <!--
+
   Licensed to the Apache Software Foundation (ASF) under one or more
   contributor license agreements.  See the NOTICE file distributed with
   this work for additional information regarding copyright ownership.
@@ -19,6 +25,7 @@
      define subcomponents such as "Valves" at this level.
      Documentation at /docs/config/server.html
  -->
+&jelastic-ssl;
 <Server port="8005" shutdown="SHUTDOWN">
   <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
   <!-- Security listener. Documentation at /docs/config/listeners.html
