@@ -5,3 +5,7 @@ function _enableSSL(){
    enableSSL $@
 }
 
+function _disableSSL(){
+   disableSSL $@
+}
+
