@@ -1,0 +1,12 @@
+<!--
+        <Connector  protocol="HTTP/1.1"
+                address="0.0.0.0"
+                URIEncoding="UTF-8"
+                port="8743" maxThreads="200"
+                scheme="https" secure="true" SSLEnabled="true"
+                keystoreFile="/var/lib/jelastic/SSL/jelastic.jks" keystorePass="changeit"
+                clientAuth="false" sslEnabledProtocols="TLSv1, TLSv1.1, TLSv1.2"
+                ciphers="TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_RC4_128_SHA,TLS_RSA_WITH_AES_128_CBC_SHA256,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,SSL_RSA_WITH_RC4_128_SHA"
+                />
+
+-->
