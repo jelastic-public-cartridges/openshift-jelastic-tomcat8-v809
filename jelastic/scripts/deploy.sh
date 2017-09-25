@@ -21,6 +21,35 @@ include os;
 
 TOMCAT_HOME='/opt/tomcat/'
 
+function ensureFileCanBeDownloaded(){
+    local resource_url=$1;
+    resource_data_dize=$($CURL -s --head $resource_url | $GREP "Content-Length" | $AWK -F ":" '{ print $2 }'| $SED 's/[^0-9]//g');
+    freebytesleft=$(( 1024 *  $(df  | $GREP "/$" | $AWK '{ print $4 }' | head -n 1)-1024*1024));
+    [ -z ${resource_data_dize} ] && return 0;
+    [ ${resource_data_dize} -lt  ${freebytesleft} ] || { writeJSONResponseErr "result=>4075" "message=>No free diskspace"; die -q; }
+    return 0;
+}
+
+function getPackageName() {
+    if [ -f "$package_url" ]; then
+        package_name="$package_url";
+    elif [[ "${package_url}" =~ file://* ]]; then
+        package_name="${package_url:7}"
+        [ -f "$package_name" ] || { writeJSONResponseErr "result=>4078" "message=>Error loading file from URL"; die -q; }
+    else
+        ensureFileCanBeDownloaded $package_url;
+        $WGET --no-check-certificate --content-disposition --directory-prefix="$DOWNLOADS" $package_url >> $ACTIONS_LOG 2>&1 || { writeJSONResponseErr "result=>4078" "message=>Error loading file from URL"; die -q; }
+        package_name="${DOWNLOADS}/$(ls ${DOWNLOADS})";
+        [ ! -s "$package_name" ] && {
+            set -f
+            rm -f "${package_name}";
+            set +f
+            writeJSONResponseErr "result=>4078" "message=>Error loading file from URL";
+            die -q;
+        }
+    fi
+}
+
 function _applyPreDeploy(){
     
     if [ -e "$TOMCAT_HOME/work/Catalina" ]
@@ -31,7 +60,7 @@ function _applyPreDeploy(){
 
 function _applyPostDeploy(){
 
-	if [ ! -d "$TOMCAT_HOME/temp" ]
+        if [ ! -d "$TOMCAT_HOME/temp" ]
     then 
         mkdir -p "$TOMCAT_HOME/temp";
         $CHOWN -R  $DATA_OWNER "$TOMCAT_HOME/temp" 2>>"$JEM_CALLS_LOG";
@@ -39,34 +68,34 @@ function _applyPostDeploy(){
 }
 
 function _applyPreUndeploy(){
-	return 0;
+        return 0;
 }
 
 function _applyPostUndeploy(){
-	[ -d "${APPS_DIR}" ] && rm -rf ${APPS_DIR}/${context}
-	rm -rf ${WEBROOT}/${context}
+        [ -d "${APPS_DIR}" ] && rm -rf ${APPS_DIR}/${context}
+        rm -rf ${WEBROOT}/${context}
 }
 
 function _applyPreRename(){
 
-	if [ -e "$TOMCAT_HOME/work/Catalina" ]
-	then 
-		rm -fr $TOMCAT_HOME/work/Catalina;
-	fi
-	if [ -e "$TOMCAT_HOME/conf/Catalina" ]
-	then 
-		rm -fr $TOMCAT_HOME/conf/Catalina;
-	fi
-	if [ -e "${WEBROOT}/$newContext" ]
+        if [ -e "$TOMCAT_HOME/work/Catalina" ]
+        then 
+                rm -fr $TOMCAT_HOME/work/Catalina;
+        fi
+        if [ -e "$TOMCAT_HOME/conf/Catalina" ]
+        then 
+                rm -fr $TOMCAT_HOME/conf/Catalina;
+        fi
+        if [ -e "${WEBROOT}/$newContext" ]
         then
-    	    rm -fr ${WEBROOT}/$newContext;
-	fi
+            rm -fr ${WEBROOT}/$newContext;
+        fi
 }
 
 function _applyPostRename(){
-	shopt -s dotglob;
-    	[ -d ${WEBROOT}/$oldContext ] && mv ${WEBROOT}/$oldContext ${WEBROOT}/$newContext;
-    	[ -d ${APPS_DIR}/$oldContext ] && mv ${APPS_DIR}/$oldContext ${APPS_DIR}/$newContext;	
+        shopt -s dotglob;
+        [ -d ${WEBROOT}/$oldContext ] && mv ${WEBROOT}/$oldContext ${WEBROOT}/$newContext;
+        [ -d ${APPS_DIR}/$oldContext ] && mv ${APPS_DIR}/$oldContext ${APPS_DIR}/$newContext;
     shopt -u dotglob; 
 }
 
@@ -83,7 +112,7 @@ function verifyUnpackedContent(){
 
         local content_path;
 
-    	content_path="${WEBROOT}/${context}";
+        content_path="${WEBROOT}/${context}";
         
 
         [ -d $content_path ] && {
@@ -115,16 +144,17 @@ function _deploy(){
         exit 1;
     fi
     _clearCache; 
-    ensureFileCanBeDownloaded $package_url;
-    $WGET --no-check-certificate --content-disposition --directory-prefix=${DOWNLOADS} $package_url >> $ACTIONS_LOG 2>&1 || { writeJSONResponceErr "result=>4078" "message=>Error loading file from URL"; die -q; }
-    package_name=`ls ${DOWNLOADS}`;
+    getPackageName;
+    #ensureFileCanBeDownloaded $package_url;
+    #$WGET --no-check-certificate --content-disposition --directory-prefix=${DOWNLOADS} $package_url >> $ACTIONS_LOG 2>&1 || { writeJSONResponceErr "result=>4078" "message=>Error loading file from URL"; die -q; }
+    #package_name=`ls ${DOWNLOADS}`;
 
-    [ ! -s "$DOWNLOADS/$package_name" ] && { 
-        rm -f ${DOWNLOADS}/${package_name};
-        writeJSONResponceErr "result=>4078" "message=>Error loading file from URL";
-        die -q;
-    }
-    ensureFileCanBeUncompressed ${DOWNLOADS}/${package_name};
+    #[ ! -s "$DOWNLOADS/$package_name" ] && { 
+    #    rm -f ${DOWNLOADS}/${package_name};
+    #    writeJSONResponceErr "result=>4078" "message=>Error loading file from URL";
+    #    die -q;
+    #}
+    ensureFileCanBeUncompressed ${package_name};
     stopService ${SERVICE} > /dev/null 2>&1;
 
     if [ -e "${WEBROOT}/$context" ]
@@ -140,9 +170,9 @@ function _deploy(){
     if [[ ${ext} == "ear" ]]
     then 
         [ ! -d  $APPS_DIR ] && mkdir -p $APPS_DIR && $CHOWN -R  $DATA_OWNER  ${APPS_DIR} 2>>"$JEM_CALLS_LOG";
-        [ -f "${DOWNLOADS}/${package_name}" ] && mv "${DOWNLOADS}/${package_name}" "${APPS_DIR}/${context}.${ext}";
+        [ -f "${package_name}" ] && cp -f "${package_name}" "${APPS_DIR}/${context}.${ext}";
     else
-        [ -f "${DOWNLOADS}/${package_name}" ] && mv "${DOWNLOADS}/${package_name}" "${WEBROOT}/${context}.${ext}";
+        [ -f "${package_name}" ] && cp -f "${package_name}" "${WEBROOT}/${context}.${ext}";
     fi
 
     _applyPostDeploy;
@@ -185,12 +215,12 @@ function _renameContext(){
     [ -e ${APPS_DIR}/${oldContext}.ear ] && mv ${APPS_DIR}/${oldContext}.ear  ${APPS_DIR}/${newContext}.ear && ear_deploy_result=0 || ear_deploy_result=1;
 
     [ $(( $war_deploy_result & $ear_deploy_result )) -ne 0  ] && {
-	
-    	shopt -u dotglob;
-		startService ${SERVICE} > /dev/null 2>&1;
-		writeJSONResponceErr "result=>4052" "message=>Context does not exist";
-		die -q;
-	}
+
+        shopt -u dotglob;
+                startService ${SERVICE} > /dev/null 2>&1;
+                writeJSONResponceErr "result=>4052" "message=>Context does not exist";
+                die -q;
+        }
 
     shopt -u dotglob;   
 
