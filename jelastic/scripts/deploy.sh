@@ -32,15 +32,18 @@ function ensureFileCanBeDownloaded(){
 
 function getPackageName() {
     if [ -f "$package_url" ]; then
-        package_name="$package_url";
+        package_name=$(basename "${package_url}")
+        package_path=$(dirname "${package_url}")
     elif [[ "${package_url}" =~ file://* ]]; then
-        package_name="${package_url:7}"
-        [ -f "$package_name" ] || { writeJSONResponseErr "result=>4078" "message=>Error loading file from URL"; die -q; }
+        package_name=$(basename "${package_url:7}")
+        package_path=$(dirname "${package_url:7}")
+        [ -f "${package_path}/${package_name}" ] || { writeJSONResponseErr "result=>4078" "message=>Error loading file from URL"; die -q; }
     else
         ensureFileCanBeDownloaded $package_url;
         $WGET --no-check-certificate --content-disposition --directory-prefix="$DOWNLOADS" $package_url >> $ACTIONS_LOG 2>&1 || { writeJSONResponseErr "result=>4078" "message=>Error loading file from URL"; die -q; }
-        package_name="${DOWNLOADS}/$(ls ${DOWNLOADS})";
-        [ ! -s "$package_name" ] && {
+        package_name="$(ls ${DOWNLOADS})";
+        package_path=${DOWNLOADS};
+        [ ! -s "${package_path}/${package_name}" ] && {
             set -f
             rm -f "${package_name}";
             set +f
@@ -117,9 +120,9 @@ function verifyUnpackedContent(){
 
         [ -d $content_path ] && {
 
-            content_size_step1=$($DU -s $content_path);
+            content_size_step1=$(du -s $content_path);
             sleep $pull_inverval_for_content;
-            content_size_step2=$($DU -s $content_path);
+            content_size_step2=$(du -s $content_path);
             [[ $content_size_step1 == $content_size_step2 ]] && return 0;
         } || let $(( attempt_num ++ ));
     sleep $pull_inverval_for_directory;
@@ -145,39 +148,32 @@ function _deploy(){
     fi
     _clearCache; 
     getPackageName;
-    #ensureFileCanBeDownloaded $package_url;
-    #$WGET --no-check-certificate --content-disposition --directory-prefix=${DOWNLOADS} $package_url >> $ACTIONS_LOG 2>&1 || { writeJSONResponceErr "result=>4078" "message=>Error loading file from URL"; die -q; }
-    #package_name=`ls ${DOWNLOADS}`;
-
-    #[ ! -s "$DOWNLOADS/$package_name" ] && { 
-    #    rm -f ${DOWNLOADS}/${package_name};
-    #    writeJSONResponceErr "result=>4078" "message=>Error loading file from URL";
-    #    die -q;
-    #}
     ensureFileCanBeUncompressed ${package_name};
     stopService ${SERVICE} > /dev/null 2>&1;
 
     if [ -e "${WEBROOT}/$context" ]
-    then 
+    then
+        set -f
         rm -fr ${WEBROOT}/$context;
+        set +f
     fi
 
     _applyPreDeploy;
 
-    #[[ $package_name == *.ear$* ]] && ext="ear" || ext="war";
-    echo $package_name | grep -qP "ear$" && ext="ear" || ext="war";
+    echo $package_name | $GREP -qP "ear$" && ext="ear" || ext="war";
 
     if [[ ${ext} == "ear" ]]
-    then 
-        [ ! -d  $APPS_DIR ] && mkdir -p $APPS_DIR && $CHOWN -R  $DATA_OWNER  ${APPS_DIR} 2>>"$JEM_CALLS_LOG";
-        [ -f "${package_name}" ] && cp -f "${package_name}" "${APPS_DIR}/${context}.${ext}";
+    then
+        [ ! -d  $APPS_DIR ] && mkdir -p $APPS_DIR && chown -R  $DATA_OWNER  ${APPS_DIR} 2>>"$JEM_CALLS_LOG";
+        /usr/bin/cp "${package_path}/${package_name}" "${APPS_DIR}/${context}.${ext}";
     else
-        [ -f "${package_name}" ] && cp -f "${package_name}" "${WEBROOT}/${context}.${ext}";
+        /usr/bin/cp "${package_path}/${package_name}" "${WEBROOT}/${context}.${ext}";
     fi
 
     _applyPostDeploy;
     _clearCache; 
     startService ${SERVICE} > /dev/null 2>&1;
+    verifyUnpackedContent "${context}";
 }
 
 function _undeploy(){
