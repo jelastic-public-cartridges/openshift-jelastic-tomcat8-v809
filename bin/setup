@@ -23,3 +23,10 @@ mkdir -p /opt/repo/versions/${Version}/logs;
 ln -s /opt/repo/versions/${Version}/logs /opt/repo/logs;
 
 sed -i 's/$RUNAS/root/' /etc/rc.d/init.d/cartridge;
+
+JAVA_BINARIES=$(find /usr/java/* -name java) 
+
+for i in ${JAVA_BINARIES}
+do
+     setcap 'cap_net_bind_service=+ep' ${i}
+done
