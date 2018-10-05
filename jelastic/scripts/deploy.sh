@@ -214,7 +214,7 @@ function _renameContext(){
 
         shopt -u dotglob;
                 startService ${SERVICE} > /dev/null 2>&1;
-                writeJSONResponceErr "result=>4052" "message=>Context does not exist";
+                writeJSONResponseErr "result=>4052" "message=>Context does not exist";
                 die -q;
         }
 
